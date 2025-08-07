@@ -2,7 +2,7 @@ import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
-
+from fastapi.responses import HTMLResponse
 from app import auth, models
 from app.config import settings
 
@@ -64,4 +64,26 @@ async def auth_github_callback(code: str):
             "https://api.github.com/user", headers=user_headers
         )
         user_response.raise_for_status()
-        return user_response.json()
+        github_user_data = user_response.json()
+
+    internal_user = models.get_or_create_user_from_github(github_user_data)
+
+    internal_jwt = auth.create_access_token(data={"sub": internal_user["username"]})
+
+    response = RedirectResponse(url=f"/api/dashboard?token={internal_jwt}")
+    return response
+
+
+@router.get("/dashboard", response_class=HTMLResponse)
+async def dashboard(token: str):
+    return f"""
+    <html>
+        <head><title>Login Successful</title></head>
+        <body>
+            <h1>Welcome! You have successfully logged in.</h1>
+            <p>Your application JWT is:</p>
+            <p style="word-wrap:break-word;"><b>{token}</b></p>
+            <p>You can now use this token to access protected endpoints like /api/users/me.</p>
+        </body>
+    </html>
+    """
