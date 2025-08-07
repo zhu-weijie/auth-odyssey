@@ -94,6 +94,8 @@ def register_user(
         )
 
     user = crud.create_db_user(db, user_create=user_create)
+    # if user.username == "admin1":
+    #     crud.promote_user_to_admin(db, user)
     return user
 
 
