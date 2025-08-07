@@ -1,13 +1,18 @@
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from app.routers import api
 from app.database import create_db_and_tables
 
-app = FastAPI(title="Auth-Odyssey")
 
-
-@app.on_event("startup")
-def on_startup():
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    print("INFO:     Lifespan startup: creating database and tables.")
     create_db_and_tables()
+    yield
+    print("INFO:     Lifespan shutdown.")
+
+
+app = FastAPI(title="Auth-Odyssey", lifespan=lifespan)
 
 
 @app.get("/")
