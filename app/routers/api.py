@@ -5,21 +5,29 @@ from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import HTMLResponse
 from app import auth, models
 from app.config import settings
+from sqlmodel import Session
+from app import crud, database
 
 router = APIRouter()
 
 
 @router.post("/token")
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = models.fake_users_db.get(form_data.username)
-    if not user or not auth.verify_password(
-        form_data.password, user["hashed_password"]
+async def login_for_access_token(
+    form_data: OAuth2PasswordRequestForm = Depends(),
+    db: Session = Depends(database.get_session),
+):
+    user = crud.get_user_by_username(db, username=form_data.username)
+
+    if (
+        not user
+        or not user.hashed_password
+        or not auth.verify_password(form_data.password, user.hashed_password)
     ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
-    access_token = auth.create_access_token(data={"sub": user["username"]})
+    access_token = auth.create_access_token(data={"sub": user.username})
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -28,8 +36,8 @@ def read_protected_data():
     return {"data": "You have accessed protected data with an API Key."}
 
 
-@router.get("/users/me")
-async def read_users_me(current_user: dict = Depends(auth.get_current_user)):
+@router.get("/users/me", response_model=models.User)
+async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
 
@@ -42,7 +50,7 @@ async def login_github():
 
 
 @router.get("/auth/github/callback")
-async def auth_github_callback(code: str):
+async def auth_github_callback(code: str, db: Session = Depends(database.get_session)):
     params = {
         "client_id": settings.GITHUB_CLIENT_ID,
         "client_secret": settings.GITHUB_CLIENT_SECRET,
@@ -66,9 +74,12 @@ async def auth_github_callback(code: str):
         user_response.raise_for_status()
         github_user_data = user_response.json()
 
-    internal_user = models.get_or_create_user_from_github(github_user_data)
+    github_id = github_user_data["id"]
+    user = crud.get_user_by_github_id(db, github_id=github_id)
+    if user is None:
+        user = crud.create_user_from_github(db, github_user_data=github_user_data)
 
-    internal_jwt = auth.create_access_token(data={"sub": internal_user["username"]})
+    internal_jwt = auth.create_access_token(data={"sub": user.username})
 
     response = RedirectResponse(url=f"/api/dashboard?token={internal_jwt}")
     return response
