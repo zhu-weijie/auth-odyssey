@@ -1,5 +1,8 @@
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 from app.routers import api
 from app.database import create_db_and_tables
 
@@ -14,10 +17,11 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Auth-Odyssey", lifespan=lifespan)
 
+app.include_router(api.router, prefix="/api")
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 
 @app.get("/")
-def read_root():
-    return {"message": "Welcome to Auth-Odyssey"}
-
-
-app.include_router(api.router, prefix="/api")
+async def read_index():
+    return FileResponse("static/index.html")
