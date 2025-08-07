@@ -28,9 +28,9 @@ async def login_for_access_token(
             detail="Incorrect username or password",
         )
 
-    token_data = {"sub": user.username}
+    token_data = {"sub": user.username, "role": user.role}
     access_token = auth.create_access_token(data=token_data)
-    refresh_token = auth.create_refresh_token(data=token_data)
+    refresh_token = auth.create_refresh_token(data={"sub": user.username})
 
     return {
         "access_token": access_token,
@@ -94,6 +94,8 @@ def register_user(
         )
 
     user = crud.create_db_user(db, user_create=user_create)
+    # if user.username == "admin1":
+    #     crud.promote_user_to_admin(db, user)
     return user
 
 
@@ -140,7 +142,9 @@ async def auth_github_callback(code: str, db: Session = Depends(database.get_ses
     if user is None:
         user = crud.create_user_from_github(db, github_user_data=github_user_data)
 
-    internal_jwt = auth.create_access_token(data={"sub": user.username})
+    internal_jwt = auth.create_access_token(
+        data={"sub": user.username, "role": user.role}
+    )
 
     response = RedirectResponse(url=f"/api/dashboard?token={internal_jwt}")
     return response
@@ -159,3 +163,24 @@ async def dashboard(token: str):
         </body>
     </html>
     """
+
+
+@router.get("/admin/users", response_model=list[models.UserPublic])
+def get_all_users_as_admin(
+    admin_user: models.User = Depends(auth.require_admin_user),
+    db: Session = Depends(database.get_session),
+):
+    return crud.get_all_users(db)
+
+
+@router.post("/admin/promote/{username}", response_model=models.UserPublic)
+def promote_user(
+    username: str,
+    admin_user: models.User = Depends(auth.require_admin_user),
+    db: Session = Depends(database.get_session),
+):
+    user_to_promote = crud.get_user_by_username(db, username=username)
+    if not user_to_promote:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    return crud.promote_user_to_admin(db, user=user_to_promote)

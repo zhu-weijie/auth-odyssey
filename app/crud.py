@@ -39,3 +39,15 @@ def create_db_user(db: Session, user_create: models.UserCreate) -> models.User:
     db.commit()
     db.refresh(db_user)
     return db_user
+
+
+def get_all_users(db: Session) -> list[models.User]:
+    return db.exec(select(models.User)).all()
+
+
+def promote_user_to_admin(db: Session, user: models.User) -> models.User:
+    user.role = "admin"
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user

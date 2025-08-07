@@ -8,6 +8,7 @@ from sqlmodel import Session
 from . import crud
 from .database import get_session
 from .config import settings
+from . import models
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
@@ -77,3 +78,12 @@ def create_refresh_token(data: dict):
         to_encode, settings.JWT_REFRESH_SECRET_KEY, algorithm=settings.ALGORITHM
     )
     return encoded_jwt
+
+
+def require_admin_user(current_user: models.User = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The user does not have administrative privileges",
+        )
+    return current_user
