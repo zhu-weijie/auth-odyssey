@@ -14,6 +14,11 @@
         button:hover { background-color: #0056b3; }
         pre { background-color: #eee; padding: 10px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; }
         .token-display { font-size: 0.8em; color: #555; }
+        
+        .token-display p {
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
     </style>
 </head>
 <body>
@@ -54,7 +59,6 @@
     const accessTokenArea = document.getElementById("accessTokenArea");
     const refreshTokenArea = document.getElementById("refreshTokenArea");
 
-    // --- Helper Functions ---
     const displayResponse = (data) => {
         responseArea.textContent = JSON.stringify(data, null, 2);
     };
@@ -128,7 +132,6 @@
         displayResponse(data);
     });
 
-    // Initial display update on page load
     updateTokenDisplay();
 </script>
 </body>
