@@ -35,25 +35,24 @@ async def login_for_access_token(
 def read_protected_data():
     return {"data": "You have accessed protected data with an API Key."}
 
-@router.post("/users", response_model=models.UserPublic, status_code=status.HTTP_201_CREATED)
+
+@router.post(
+    "/users", response_model=models.UserPublic, status_code=status.HTTP_201_CREATED
+)
 def register_user(
-    user_create: models.UserCreate, 
-    db: Session = Depends(database.get_session)
+    user_create: models.UserCreate, db: Session = Depends(database.get_session)
 ):
-    """
-    Create a new user account.
-    """
-    # Check if user already exists
     existing_user = crud.get_user_by_username(db, username=user_create.username)
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Username already registered",
         )
-    
-    # Create and return the new user
+
     user = crud.create_db_user(db, user_create=user_create)
     return user
+
+
 @router.get("/users/me", response_model=models.UserPublic)
 async def read_users_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
