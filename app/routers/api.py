@@ -7,17 +7,17 @@ from app import auth, models
 from app.config import settings
 from sqlmodel import Session
 from app import crud, database
+from jose import jwt, JWTError
 
 router = APIRouter()
 
 
-@router.post("/token")
+@router.post("/token", response_model=models.Token)
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(database.get_session),
 ):
     user = crud.get_user_by_username(db, username=form_data.username)
-
     if (
         not user
         or not user.hashed_password
@@ -27,8 +27,52 @@ async def login_for_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
         )
-    access_token = auth.create_access_token(data={"sub": user.username})
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    token_data = {"sub": user.username}
+    access_token = auth.create_access_token(data=token_data)
+    refresh_token = auth.create_refresh_token(data=token_data)
+
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+    }
+
+
+@router.post("/token/refresh", response_model=models.Token)
+async def refresh_access_token(
+    refresh_token: str = Depends(auth.oauth2_scheme),
+    db: Session = Depends(database.get_session),
+):
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(
+            refresh_token,
+            settings.JWT_REFRESH_SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+        )
+        username: str | None = payload.get("sub")
+        if username is None:
+            raise credentials_exception
+
+        user = crud.get_user_by_username(db, username=username)
+        if user is None:
+            raise credentials_exception
+
+        new_access_token = auth.create_access_token(data={"sub": user.username})
+        new_refresh_token = auth.create_refresh_token(data={"sub": user.username})
+
+        return {
+            "access_token": new_access_token,
+            "refresh_token": new_refresh_token,
+            "token_type": "bearer",
+        }
+    except JWTError:
+        raise credentials_exception
 
 
 @router.get("/protected", dependencies=[Depends(auth.get_api_key)])
