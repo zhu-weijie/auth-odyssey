@@ -11,3 +11,17 @@ class User(SQLModel, table=True):
     disabled: bool = False
 
     github_id: Optional[int] = Field(default=None, unique=True, index=True)
+
+
+class UserCreate(SQLModel):
+    username: str
+    password: str
+    full_name: Optional[str] = None
+    email: Optional[str] = None
+
+
+class UserPublic(SQLModel):
+    id: int
+    username: str
+    full_name: Optional[str] = None
+    disabled: bool
