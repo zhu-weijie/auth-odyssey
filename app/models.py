@@ -25,3 +25,9 @@ class UserPublic(SQLModel):
     username: str
     full_name: Optional[str] = None
     disabled: bool
+
+
+class Token(SQLModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"

@@ -65,3 +65,15 @@ async def get_current_user(
         return user
     except JWTError:
         raise credentials_exception
+
+
+def create_refresh_token(data: dict):
+    to_encode = data.copy()
+    expires = datetime.now(timezone.utc) + timedelta(
+        days=settings.REFRESH_TOKEN_EXPIRE_DAYS
+    )
+    to_encode.update({"exp": expires})
+    encoded_jwt = jwt.encode(
+        to_encode, settings.JWT_REFRESH_SECRET_KEY, algorithm=settings.ALGORITHM
+    )
+    return encoded_jwt
