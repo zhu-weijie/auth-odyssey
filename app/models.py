@@ -12,6 +12,8 @@ class User(SQLModel, table=True):
 
     github_id: Optional[int] = Field(default=None, unique=True, index=True)
 
+    role: str = Field(default="user", index=True)
+
 
 class UserCreate(SQLModel):
     username: str
@@ -25,6 +27,7 @@ class UserPublic(SQLModel):
     username: str
     full_name: Optional[str] = None
     disabled: bool
+    role: str
 
 
 class Token(SQLModel):
