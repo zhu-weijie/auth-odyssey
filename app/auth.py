@@ -1,4 +1,5 @@
 import secrets
+import uuid
 from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import APIKeyHeader
@@ -35,6 +36,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
 
     to_encode.update({"exp": expire})
     to_encode.update({"iss": settings.JWT_ISSUER, "aud": settings.JWT_AUDIENCE})
+    to_encode.update({"jti": str(uuid.uuid4())})
 
     encoded_jwt = jwt.encode(
         to_encode, settings.JWT_PRIVATE_KEY, algorithm=settings.ALGORITHM
@@ -69,6 +71,14 @@ async def get_current_user(
             audience=settings.JWT_AUDIENCE,
             issuer=settings.JWT_ISSUER,
         )
+
+        jti = payload.get("jti")
+        if jti is None:
+            raise credentials_exception
+
+        if crud.is_jti_in_blocklist(db, jti=jti):
+            raise credentials_exception
+
         username: str | None = payload.get("sub")
         if username is None:
             raise credentials_exception
