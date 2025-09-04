@@ -43,3 +43,11 @@ class TokenBlocklist(SQLModel, table=True):
     created_at: datetime = Field(
         default_factory=datetime.now(timezone.utc), nullable=False
     )
+
+
+class UsedRefreshToken(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    jti: str = Field(index=True, unique=True)
+    created_at: datetime = Field(
+        default_factory=datetime.now(timezone.utc), nullable=False
+    )

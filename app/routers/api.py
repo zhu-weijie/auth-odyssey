@@ -52,9 +52,7 @@ async def login_for_access_token(
 
 @router.post("/token/refresh")
 async def refresh_access_token(
-    response: Response,
-    request: Request,
-    db: Session = Depends(database.get_session),
+    response: Response, request: Request, db: Session = Depends(database.get_session)
 ):
     refresh_token = request.cookies.get("refresh_token")
     if not refresh_token:
@@ -62,7 +60,6 @@ async def refresh_access_token(
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
     )
     try:
         payload = jwt.decode(
@@ -71,12 +68,21 @@ async def refresh_access_token(
             algorithms=[auth.REFRESH_TOKEN_ALGORITHM],
         )
         username: str | None = payload.get("sub")
-        if username is None:
+        jti: str | None = payload.get("jti")
+
+        if not username or not jti:
             raise credentials_exception
+
+        if crud.is_refresh_jti_in_blocklist(db, jti=jti):
+            raise HTTPException(
+                status_code=401, detail="Refresh token has already been used"
+            )
 
         user = crud.get_user_by_username(db, username=username)
         if user is None:
             raise credentials_exception
+
+        crud.add_refresh_jti_to_blocklist(db, jti=jti)
 
         new_access_token = auth.create_access_token(
             data={"sub": user.username, "role": user.role}
@@ -88,14 +94,14 @@ async def refresh_access_token(
             value=new_access_token,
             httponly=True,
             samesite="lax",
-            secure=False,
+            secure=True,
         )
         response.set_cookie(
             key="refresh_token",
             value=new_refresh_token,
             httponly=True,
             samesite="lax",
-            secure=False,
+            secure=True,
         )
 
         return {"message": "Token refreshed successfully"}
