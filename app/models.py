@@ -1,5 +1,6 @@
 from typing import Optional
 from sqlmodel import Field, SQLModel
+from datetime import datetime, timezone
 
 
 class User(SQLModel, table=True):
@@ -34,3 +35,11 @@ class Token(SQLModel):
     access_token: str
     refresh_token: str
     token_type: str = "bearer"
+
+
+class TokenBlocklist(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    jti: str = Field(index=True, unique=True)
+    created_at: datetime = Field(
+        default_factory=datetime.now(timezone.utc), nullable=False
+    )
