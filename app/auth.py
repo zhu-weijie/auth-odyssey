@@ -27,7 +27,10 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
         expire = datetime.now(timezone.utc) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
+
     to_encode.update({"exp": expire})
+    to_encode.update({"iss": settings.JWT_ISSUER, "aud": settings.JWT_AUDIENCE})
+
     encoded_jwt = jwt.encode(
         to_encode, settings.JWT_SECRET_KEY, algorithm=settings.ALGORITHM
     )
@@ -53,7 +56,11 @@ async def get_current_user(
     )
     try:
         payload = jwt.decode(
-            token, settings.JWT_SECRET_KEY, algorithms=[settings.ALGORITHM]
+            token,
+            settings.JWT_SECRET_KEY,
+            algorithms=[settings.ALGORITHM],
+            audience=settings.JWT_AUDIENCE,
+            issuer=settings.JWT_ISSUER,
         )
         username: str | None = payload.get("sub")
         if username is None:
