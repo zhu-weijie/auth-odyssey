@@ -37,6 +37,7 @@
         <h2>API Actions</h2>
         <button id="getProfileBtn">Get My Profile</button>
         <button id="refreshTokenBtn">Refresh Token</button>
+        <button id="logoutBtn">Logout</button>
 
         <h2>Response</h2>
         <pre id="responseArea">API responses will appear here...</pre>
@@ -84,6 +85,13 @@
     document.getElementById("refreshTokenBtn").addEventListener("click", async () => {
         // No need to send the token. The browser sends the cookie.
         const res = await fetch(`${API_BASE_URL}/token/refresh`, {
+            method: "POST",
+        });
+        displayResponse(await res.json());
+    });
+
+    document.getElementById("logoutBtn").addEventListener("click", async () => {
+        const res = await fetch(`${API_BASE_URL}/logout`, {
             method: "POST",
         });
         displayResponse(await res.json());
