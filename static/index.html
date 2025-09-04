@@ -45,27 +45,14 @@
 
         <h2>Response</h2>
         <pre id="responseArea">API responses will appear here...</pre>
-
-        <div class="token-display">
-            <h3>Current Tokens (in localStorage)</h3>
-            <p><b>Access:</b> <span id="accessTokenArea"></span></p>
-            <p><b>Refresh:</b> <span id="refreshTokenArea"></span></p>
-        </div>
     </div>
 
 <script>
-    const API_BASE_URL = "http://127.0.0.1:8000/api";
+    const API_BASE_URL = "/api";
     const responseArea = document.getElementById("responseArea");
-    const accessTokenArea = document.getElementById("accessTokenArea");
-    const refreshTokenArea = document.getElementById("refreshTokenArea");
 
     const displayResponse = (data) => {
         responseArea.textContent = JSON.stringify(data, null, 2);
-    };
-
-    const updateTokenDisplay = () => {
-        accessTokenArea.textContent = localStorage.getItem("access_token") || "None";
-        refreshTokenArea.textContent = localStorage.getItem("refresh_token") || "None";
     };
 
     const setTokens = (data) => {
@@ -96,43 +83,23 @@
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
             body: new URLSearchParams({ username, password }),
         });
-        const data = await res.json();
-        if (res.ok) {
-            setTokens(data);
-        }
-        displayResponse(data);
+        // Browser automatically handles the set-cookie response header
+        displayResponse(await res.json());
     });
 
     document.getElementById("getProfileBtn").addEventListener("click", async () => {
-        const token = localStorage.getItem("access_token");
-        if (!token) {
-            displayResponse({ error: "No access token found. Please log in." });
-            return;
-        }
-        const res = await fetch(`${API_BASE_URL}/users/me`, {
-            headers: { "Authorization": `Bearer ${token}` },
-        });
+        // No need to set Authorization header. The browser sends the cookie.
+        const res = await fetch(`${API_BASE_URL}/users/me`);
         displayResponse(await res.json());
     });
 
     document.getElementById("refreshTokenBtn").addEventListener("click", async () => {
-        const refreshToken = localStorage.getItem("refresh_token");
-        if (!refreshToken) {
-            displayResponse({ error: "No refresh token found. Please log in." });
-            return;
-        }
+        // No need to send the token. The browser sends the cookie.
         const res = await fetch(`${API_BASE_URL}/token/refresh`, {
             method: "POST",
-            headers: { "Authorization": `Bearer ${refreshToken}` },
         });
-        const data = await res.json();
-        if (res.ok) {
-            setTokens(data);
-        }
-        displayResponse(data);
+        displayResponse(await res.json());
     });
-
-    updateTokenDisplay();
 </script>
 </body>
 </html>
