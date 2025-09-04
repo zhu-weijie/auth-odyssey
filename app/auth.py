@@ -98,6 +98,8 @@ def create_refresh_token(data: dict):
         days=settings.REFRESH_TOKEN_EXPIRE_DAYS
     )
     to_encode.update({"exp": expires})
+    to_encode.update({"jti": str(uuid.uuid4())})
+
     encoded_jwt = jwt.encode(
         to_encode, settings.JWT_REFRESH_SECRET_KEY, algorithm=REFRESH_TOKEN_ALGORITHM
     )
