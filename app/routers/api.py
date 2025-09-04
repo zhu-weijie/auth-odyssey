@@ -1,5 +1,5 @@
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.responses import HTMLResponse
@@ -12,8 +12,9 @@ from jose import jwt, JWTError
 router = APIRouter()
 
 
-@router.post("/token", response_model=models.Token)
+@router.post("/token")
 async def login_for_access_token(
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(database.get_session),
 ):
@@ -23,27 +24,39 @@ async def login_for_access_token(
         or not user.hashed_password
         or not auth.verify_password(form_data.password, user.hashed_password)
     ):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-        )
+        raise HTTPException(...)
 
     token_data = {"sub": user.username, "role": user.role}
     access_token = auth.create_access_token(data=token_data)
     refresh_token = auth.create_refresh_token(data={"sub": user.username})
 
-    return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "token_type": "bearer",
-    }
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        samesite="lax",
+        secure=True,
+    )
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        httponly=True,
+        samesite="lax",
+        secure=True,
+    )
+
+    return {"message": "Login successful"}
 
 
-@router.post("/token/refresh", response_model=models.Token)
+@router.post("/token/refresh")
 async def refresh_access_token(
-    refresh_token: str = Depends(auth.oauth2_scheme),
+    response: Response,
+    request: Request,
     db: Session = Depends(database.get_session),
 ):
+    refresh_token = request.cookies.get("refresh_token")
+    if not refresh_token:
+        raise HTTPException(status_code=401, detail="Refresh token not found")
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -63,14 +76,27 @@ async def refresh_access_token(
         if user is None:
             raise credentials_exception
 
-        new_access_token = auth.create_access_token(data={"sub": user.username})
+        new_access_token = auth.create_access_token(
+            data={"sub": user.username, "role": user.role}
+        )
         new_refresh_token = auth.create_refresh_token(data={"sub": user.username})
 
-        return {
-            "access_token": new_access_token,
-            "refresh_token": new_refresh_token,
-            "token_type": "bearer",
-        }
+        response.set_cookie(
+            key="access_token",
+            value=new_access_token,
+            httponly=True,
+            samesite="lax",
+            secure=False,
+        )
+        response.set_cookie(
+            key="refresh_token",
+            value=new_refresh_token,
+            httponly=True,
+            samesite="lax",
+            secure=False,
+        )
+
+        return {"message": "Token refreshed successfully"}
     except JWTError:
         raise credentials_exception
 

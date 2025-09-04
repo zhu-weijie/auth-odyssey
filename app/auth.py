@@ -1,7 +1,7 @@
 import secrets
 from datetime import datetime, timedelta, timezone
-from fastapi import Depends, HTTPException, status
-from fastapi.security import APIKeyHeader, OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status, Request
+from fastapi.security import APIKeyHeader
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from sqlmodel import Session
@@ -11,9 +11,13 @@ from .config import settings
 from . import models
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 api_key_header = APIKeyHeader(name="X-API-Key")
 REFRESH_TOKEN_ALGORITHM = "HS256"
+
+
+def get_token_from_cookie(request: Request) -> str | None:
+    token = request.cookies.get("access_token")
+    return token
 
 
 def verify_password(plain_password, hashed_password):
@@ -48,13 +52,15 @@ def get_api_key(api_key: str = Depends(api_key_header)):
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(get_session)
+    token: str | None = Depends(get_token_from_cookie),
+    db: Session = Depends(get_session),
 ):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
     )
+    if token is None:
+        raise credentials_exception
     try:
         payload = jwt.decode(
             token,
