@@ -51,3 +51,15 @@ def promote_user_to_admin(db: Session, user: models.User) -> models.User:
     db.commit()
     db.refresh(user)
     return user
+
+
+def add_jti_to_blocklist(db: Session, jti: str):
+    blocklist_entry = models.TokenBlocklist(jti=jti)
+    db.add(blocklist_entry)
+    db.commit()
+
+
+def is_jti_in_blocklist(db: Session, jti: str) -> bool:
+    statement = select(models.TokenBlocklist).where(models.TokenBlocklist.jti == jti)
+    result = db.exec(statement).first()
+    return result is not None

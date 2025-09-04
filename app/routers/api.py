@@ -1,4 +1,6 @@
 import httpx
+import base64
+import json
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Request
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -210,3 +212,28 @@ def promote_user(
         raise HTTPException(status_code=404, detail="User not found")
 
     return crud.promote_user_to_admin(db, user=user_to_promote)
+
+
+@router.post("/logout")
+def logout(
+    response: Response, request: Request, db: Session = Depends(database.get_session)
+):
+    token = request.cookies.get("access_token")
+
+    if token:
+        try:
+            payload_part = token.split(".")[1]
+
+            padded_payload = payload_part + "=" * (-len(payload_part) % 4)
+            decoded_payload = base64.urlsafe_b64decode(padded_payload)
+            payload = json.loads(decoded_payload)
+            jti = payload.get("jti")
+
+            if jti:
+                crud.add_jti_to_blocklist(db, jti=jti)
+        except Exception:
+            pass
+
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return {"message": "Logout successful"}
