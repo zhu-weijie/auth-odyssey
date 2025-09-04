@@ -63,3 +63,17 @@ def is_jti_in_blocklist(db: Session, jti: str) -> bool:
     statement = select(models.TokenBlocklist).where(models.TokenBlocklist.jti == jti)
     result = db.exec(statement).first()
     return result is not None
+
+
+def add_refresh_jti_to_blocklist(db: Session, jti: str):
+    blocklist_entry = models.UsedRefreshToken(jti=jti)
+    db.add(blocklist_entry)
+    db.commit()
+
+
+def is_refresh_jti_in_blocklist(db: Session, jti: str) -> bool:
+    statement = select(models.UsedRefreshToken).where(
+        models.UsedRefreshToken.jti == jti
+    )
+    result = db.exec(statement).first()
+    return result is not None
