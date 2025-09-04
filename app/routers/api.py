@@ -53,7 +53,7 @@ async def refresh_access_token(
         payload = jwt.decode(
             refresh_token,
             settings.JWT_REFRESH_SECRET_KEY,
-            algorithms=[settings.ALGORITHM],
+            algorithms=[auth.REFRESH_TOKEN_ALGORITHM],
         )
         username: str | None = payload.get("sub")
         if username is None:

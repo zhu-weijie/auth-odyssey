@@ -13,6 +13,7 @@ from . import models
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/token")
 api_key_header = APIKeyHeader(name="X-API-Key")
+REFRESH_TOKEN_ALGORITHM = "HS256"
 
 
 def verify_password(plain_password, hashed_password):
@@ -32,7 +33,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     to_encode.update({"iss": settings.JWT_ISSUER, "aud": settings.JWT_AUDIENCE})
 
     encoded_jwt = jwt.encode(
-        to_encode, settings.JWT_SECRET_KEY, algorithm=settings.ALGORITHM
+        to_encode, settings.JWT_PRIVATE_KEY, algorithm=settings.ALGORITHM
     )
     return encoded_jwt
 
@@ -57,7 +58,7 @@ async def get_current_user(
     try:
         payload = jwt.decode(
             token,
-            settings.JWT_SECRET_KEY,
+            settings.JWT_PUBLIC_KEY,
             algorithms=[settings.ALGORITHM],
             audience=settings.JWT_AUDIENCE,
             issuer=settings.JWT_ISSUER,
@@ -82,7 +83,7 @@ def create_refresh_token(data: dict):
     )
     to_encode.update({"exp": expires})
     encoded_jwt = jwt.encode(
-        to_encode, settings.JWT_REFRESH_SECRET_KEY, algorithm=settings.ALGORITHM
+        to_encode, settings.JWT_REFRESH_SECRET_KEY, algorithm=REFRESH_TOKEN_ALGORITHM
     )
     return encoded_jwt
 
